@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDS [NOTHING_OS]</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-main: #FFFFFF;
+            --text-dim: #888888;
+            --accent-red: #ea2b2b;
+            --accent-green: #00ff00;
+            --accent-blue: #4aa1ff;
+            --border-color: #333333;
+        }
+
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: 'Space Mono', monospace; margin: 0; padding: 2rem; text-transform: uppercase; }
+        h1, h2 { font-family: 'DotGothic16', sans-serif; letter-spacing: 2px; margin-top: 0; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--text-main); padding-bottom: 1rem; margin-bottom: 2rem; }
+        .badge { background-color: var(--text-main); color: var(--bg-color); padding: 0.2rem 0.5rem; font-weight: bold; }
+        
+        button { background: transparent; border: 1px solid var(--text-main); color: var(--text-main); font-family: 'Space Mono', monospace; padding: 0.5rem 1rem; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+        button:hover { background: var(--text-main); color: var(--bg-color); }
+        .btn-red { border-color: var(--accent-red); color: var(--accent-red); }
+        .btn-red:hover { background: var(--accent-red); color: var(--text-main); }
+        .btn-green { border-color: var(--accent-green); color: var(--accent-green); }
+        .btn-green:hover { background: var(--accent-green); color: var(--bg-color); }
+        .btn-blue { border-color: var(--accent-blue); color: var(--accent-blue); width: 100%; margin-top: 1rem; }
+        .btn-blue:hover { background: var(--accent-blue); color: var(--bg-color); }
+
+        .grid { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; }
+        .panel { border: 1px solid var(--border-color); padding: 1rem; height: 70vh; overflow-y: auto; position: relative; }
+        .panel-title { color: var(--text-dim); font-size: 0.8rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; display: flex; justify-content: space-between;}
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { text-align: left; padding: 0.5rem; border-bottom: 1px dashed var(--border-color); }
+        th { color: var(--text-dim); }
+        tr { cursor: pointer; transition: background 0.2s; }
+        tr:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+        .alert-item { border-left: 4px solid var(--accent-red); padding: 0.8rem; margin-bottom: 1rem; background-color: rgba(234, 43, 43, 0.05); font-size: 0.85rem; }
+        .alert-title { color: var(--accent-red); font-weight: bold; margin-bottom: 0.5rem;}
+        .alert-actions { margin-top: 0.8rem; display: flex; gap: 0.5rem; }
+
+        #inspector-modal { display: none; position: fixed; top: 0; right: 0; width: 400px; height: 100vh; background: rgba(0, 0, 0, 0.95); border-left: 2px solid var(--text-main); padding: 2rem; box-shadow: -10px 0 30px rgba(0,0,0,0.8); z-index: 1000; }
+        .close-btn { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer; color: var(--text-dim); }
+        .close-btn:hover { color: var(--text-main); }
+        .inspector-data { margin-top: 2rem; line-height: 1.8; font-size: 0.9rem; }
+        .data-label { color: var(--text-dim); display: inline-block; width: 100px; }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>N_IDS <span class="badge">V2.0</span></h1>
+        <div style="text-align: right; display: flex; gap: 1rem; align-items: center;">
+            <button onclick="window.location.href='/api/export/csv'">[ DESCARGAR CSV ]</button>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-dim);">ESTADO</div>
+                <div style="color: var(--accent-green);">MONITOREANDO</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="panel" id="traffic-panel">
+            <div class="panel-title">
+                <span>/ REGISTRO DE RED (CAPA 3/7)</span>
+                <span>MAX_RECORDS: 300</span>
+            </div>
+            <table id="traffic-table">
+                <thead>
+                    <tr>
+                        <th>HORA</th>
+                        <th>ORIGEN</th>
+                        <th>DESTINO</th>
+                        <th>PROTOCOLO</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="panel" id="alerts-panel">
+            <div class="panel-title">/ ALERTAS DE SEGURIDAD</div>
+            <div id="alerts-container"></div>
+        </div>
+    </div>
+
+    <div id="inspector-modal">
+        <div class="close-btn" onclick="closeInspector()">[X]</div>
+        <h2>INSPECTOR</h2>
+        <hr style="border-color: var(--border-color); margin-bottom: 2rem;">
+        <div class="inspector-data" id="inspector-content"></div>
+    </div>
+
+    <script>
+        const socket = io();
+
+        function showInspector(data) {
+            const modal = document.getElementById('inspector-modal');
+            const content = document.getElementById('inspector-content');
+            let targetIP = data.origen || data.ip;
+
+            content.innerHTML = `
+                <div><span class="data-label">HORA:</span> ${data.hora || 'N/A'}</div>
+                <div><span class="data-label">PROTOCOLO:</span> ${data.protocolo || 'N/A'}</div>
+                <br>
+                <div><span class="data-label">IP ORIGEN:</span> ${targetIP}</div>
+                <div><span class="data-label">MAC ORIGEN:</span> ${data.mac_origen || data.mac || 'N/A'}</div>
+                <br>
+                <div><span class="data-label">DESTINO:</span> <span style="color: var(--accent-red);">${data.destino || 'N/A'}</span></div>
+                
+                <hr style="border-color: var(--border-color); margin: 2rem 0;">
+                <div style="color: var(--text-dim); font-size: 0.75rem; margin-bottom: 0.5rem;">/ THREAT INTELLIGENCE</div>
+                <button class="btn-blue" onclick="scanVT('${targetIP}')">[ ESCANEAR CON VIRUSTOTAL ]</button>
+            `;
+            modal.style.display = 'block';
+        }
+
+        function closeInspector() { document.getElementById('inspector-modal').style.display = 'none'; }
+
+        async function allowIP(ip, mac) {
+            const res = await fetch('/api/whitelist/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip, mac: mac })
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        async function blockIP(ip) {
+            const res = await fetch('/api/block', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip })
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        async function scanVT(ip) {
+            alert(`Enviando petición a VirusTotal para la IP: ${ip}\nEsto puede tardar unos segundos...`);
+            const res = await fetch('/api/scan/virustotal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip })
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        socket.on('trafico', function(data) {
+            const tbody = document.querySelector('#traffic-table tbody');
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${data.hora}</td><td>${data.origen}</td><td>${data.destino}</td><td>[${data.protocolo}]</td>`;
+            row.onclick = () => showInspector(data);
+            tbody.insertBefore(row, tbody.firstChild);
+            if (tbody.children.length > 300) { tbody.lastChild.remove(); }
+        });
+
+        socket.on('alerta', function(data) {
+            const container = document.getElementById('alerts-container');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert-item';
+            
+            let actionButtons = '';
+            if (data.tipo.includes('INTRUSO')) {
+                actionButtons = `<button class="btn-green" style="font-size: 0.7rem;" onclick="allowIP('${data.ip}', '${data.mac}')">AÑADIR A WHITELIST</button>`;
+            } else if (data.tipo.includes('AMENAZA')) {
+                actionButtons = `<button class="btn-red" style="font-size: 0.7rem;" onclick="blockIP('${data.ip}')">BLOQUEAR EN FIREWALL</button>`;
+            }
+
+            alertDiv.innerHTML = `
+                <div class="alert-title">[!] ${data.tipo}</div>
+                <div>${data.mensaje}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;">TIME: ${data.hora}</div>
+                <div class="alert-actions">${actionButtons}</div>
+            `;
+            container.insertBefore(alertDiv, container.firstChild);
+        });
+    </script>
+</body>
+</html>

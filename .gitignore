@@ -1,0 +1,9 @@
+# Entornos virtuales
+venv/
+__pycache__/
+
+# Variables de entorno y contraseñas
+.env
+
+# Archivos generados
+*.csv
