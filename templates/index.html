@@ -44,7 +44,7 @@
 
         .alert-item { border-left: 4px solid var(--accent-red); padding: 0.8rem; margin-bottom: 1rem; background-color: rgba(234, 43, 43, 0.05); font-size: 0.85rem; }
         .alert-title { color: var(--accent-red); font-weight: bold; margin-bottom: 0.5rem;}
-        .alert-actions { margin-top: 0.8rem; display: flex; gap: 0.5rem; }
+        .alert-actions { margin-top: 0.8rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
 
         #inspector-modal { display: none; position: fixed; top: 0; right: 0; width: 400px; height: 100vh; background: rgba(0, 0, 0, 0.95); border-left: 2px solid var(--text-main); padding: 2rem; box-shadow: -10px 0 30px rgba(0,0,0,0.8); z-index: 1000; }
         .close-btn { position: absolute; top: 1rem; right: 1rem; font-size: 1.5rem; cursor: pointer; color: var(--text-dim); }
@@ -138,6 +138,17 @@
             alert(data.message);
         }
 
+        // Nueva función para agregar a la Blacklist desde el botón
+        async function addToBlacklist(ip) {
+            const res = await fetch('/api/blacklist/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip })
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
         async function blockIP(ip) {
             const res = await fetch('/api/block', {
                 method: 'POST',
@@ -174,8 +185,12 @@
             alertDiv.className = 'alert-item';
             
             let actionButtons = '';
+            // Se añade el botón de AÑADIR A BLACKLIST junto al de Whitelist
             if (data.tipo.includes('INTRUSO')) {
-                actionButtons = `<button class="btn-green" style="font-size: 0.7rem;" onclick="allowIP('${data.ip}', '${data.mac}')">AÑADIR A WHITELIST</button>`;
+                actionButtons = `
+                    <button class="btn-green" style="font-size: 0.7rem;" onclick="allowIP('${data.ip}', '${data.mac}')">AÑADIR A WHITELIST</button>
+                    <button class="btn-red" style="font-size: 0.7rem;" onclick="addToBlacklist('${data.ip}')">AÑADIR A BLACKLIST</button>
+                `;
             } else if (data.tipo.includes('AMENAZA')) {
                 actionButtons = `<button class="btn-red" style="font-size: 0.7rem;" onclick="blockIP('${data.ip}')">BLOQUEAR EN FIREWALL</button>`;
             }
