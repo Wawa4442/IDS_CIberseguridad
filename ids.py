@@ -72,6 +72,10 @@ vt_cache = set()
 # ==========================================
 # LÓGICA DEL IDS Y ESCÁNER AUTOMÁTICO
 # ==========================================
+
+# -------------------------------------------
+# Gestión de Listas Blanca y Negra
+# -------------------------------------------
 def cargar_listas():
     global whitelist, blacklist
     if os.path.exists('whitelist.json'):
@@ -98,6 +102,9 @@ def agregar_a_blacklist_interna(ip):
             f.write(f"\n{ip}")
         print_log("INFO", f"IP {ip} añadida permanentemente a la Blacklist.")
 
+# -------------------------------------------
+# Sistema de Alertas por Correo Electrónico
+# -------------------------------------------
 def enviar_correo(asunto, cuerpo):
     try:
         msg = EmailMessage()
@@ -112,6 +119,9 @@ def enviar_correo(asunto, cuerpo):
     except Exception as e:
         print_log("ALERT", f"Error enviando correo: {e}")
 
+# -------------------------------------------
+# Manejo de Intrusos y Envío por Lotes      
+# -------------------------------------------
 def manejar_intruso(ip_src, mac_src):
     global intrusos_lote
     identifier = f"{ip_src}-{mac_src}"
@@ -140,6 +150,9 @@ def manejar_intruso(ip_src, mac_src):
             threading.Thread(target=enviar_correo, args=(asunto, cuerpo)).start()
             intrusos_lote.clear()
 
+# -------------------------------------------
+# Automatización Forence para IPs Maliciosas
+# -------------------------------------------
 def automatizacion_forense(ip_dst):
     if ip_dst not in alerted_threats:
         alerted_threats.add(ip_dst)
@@ -189,7 +202,9 @@ def automatizacion_forense(ip_dst):
         cuerpo = f"Tráfico detectado hacia lista negra.\nIP: {ip_dst}\nFecha: {hora_actual}\n\n=== REPORTE FORENSE ===\n{datos_abuso}"
         enviar_correo(asunto, cuerpo)
 
-# Hilo trabajador para VirusTotal
+# -------------------------------------------
+# Escáner Automático de VirusTotal (Hilo trabajador)
+# -------------------------------------------
 def auto_scan_worker():
     print_log("INFO", "Motor de Inteligencia de Amenazas (Auto-VT) iniciado en segundo plano.")
     while True:
@@ -288,6 +303,9 @@ def procesar_paquete(packet):
             socketio.emit('trafico', record)
             print_log("TRAFFIC", f"{record['origen']} --> {record['destino']} [{record['protocolo']}]")
 
+# -------------------------------------------
+# Captura de Paquetes en Tiempo Real con Scapy
+# -------------------------------------------
 def iniciar_sniffer():
     print_log("INFO", "Motor de captura de paquetes (Scapy) iniciado.")
     sniff(prn=procesar_paquete, store=False)
@@ -299,10 +317,16 @@ def abrir_navegador():
 # ==========================================
 # RUTAS API
 # ==========================================
+# -------------------------------------------
+# Principal
+# -------------------------------------------
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# -------------------------------------------
+# Agrega lista blanca
+# -------------------------------------------
 @app.route('/api/whitelist/add', methods=['POST'])
 def add_to_whitelist():
     data = request.json
@@ -316,6 +340,9 @@ def add_to_whitelist():
     print_log("INFO", f"IP {ip} añadida a lista blanca desde la UI.")
     return {"status": "success", "message": f"{ip} añadido a la lista blanca."}
 
+# -------------------------------------------
+# Agrega lista negra
+# -------------------------------------------
 @app.route('/api/blacklist/add', methods=['POST'])
 def add_to_blacklist():
     ip = request.json.get('ip')
@@ -324,6 +351,9 @@ def add_to_blacklist():
         return {"status": "success", "message": f"{ip} enviada a lista negra."}
     return {"status": "error", "message": "Falta IP"}, 400
 
+# -------------------------------------------
+# Bloqueo
+# -------------------------------------------
 @app.route('/api/block', methods=['POST'])
 def block_ip():
     ip = request.json.get('ip')
@@ -336,6 +366,9 @@ def block_ip():
         print_log("ALERT", f"Fallo al bloquear IP: {e}")
         return {"status": "error", "message": str(e)}, 500
 
+# -------------------------------------------
+# Escaneo VirusTotal
+# -------------------------------------------
 @app.route('/api/scan/virustotal', methods=['POST'])
 def scan_virustotal():
     ip = request.json.get('ip')
@@ -365,6 +398,9 @@ def scan_virustotal():
     except Exception as e:
         return {"status": "error", "message": str(e)}, 500
 
+# -------------------------------------------
+# Exportar CVS
+# -------------------------------------------
 @app.route('/api/export/csv')
 def export_csv():
     si = io.StringIO()
@@ -378,6 +414,9 @@ def export_csv():
     print_log("INFO", "Usuario descargó el reporte CSV.")
     return output
 
+# ==========================================
+# ARRANQUE PRINCIPAL
+# ==========================================
 if __name__ == '__main__':
     os.system('clear')
     print(f"\n{NColor.WHITE}{NColor.BOLD}=== N_IDS V2.0 SYSTEM INITIALIZATION ==={NColor.RESET}\n")
